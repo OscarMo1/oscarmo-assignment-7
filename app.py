@@ -139,13 +139,13 @@ def hypothesis_test():
     # Retrieve data from session
     N = int(session.get("N"))
     S = int(session.get("S"))
-    slopes = session.get("slopes")
-    intercepts = session.get("intercepts")
     slope = float(session.get("slope"))
     intercept = float(session.get("intercept"))
+    slopes = session.get("slopes")
+    intercepts = session.get("intercepts")
     beta0 = float(session.get("beta0"))
     beta1 = float(session.get("beta1"))
-    
+
     parameter = request.form.get("parameter")
     test_type = request.form.get("test_type")
 
@@ -160,28 +160,25 @@ def hypothesis_test():
         hypothesized_value = beta0
 
     # TODO 10: Calculate p-value based on test type
-    if test_type == "greater":
+    if test_type == ">":
         p_value = np.mean(simulated_stats >= observed_stat)
-    elif test_type == "less":
+    elif test_type == "<":
         p_value = np.mean(simulated_stats <= observed_stat)
-    else: 
-        p_value = 2 * np.mean(np.abs(simulated_stats - hypothesized_value) >= np.abs(observed_stat - hypothesized_value))
-    
+    else:  # Not equal
+        p_value = np.mean(np.abs(simulated_stats - hypothesized_value) >= np.abs(observed_stat - hypothesized_value))
+
+
     # TODO 11: If p_value is very small (e.g., <= 0.0001), set fun_message to a fun message
-    if p_value <= 0.0001:
-        fun_message = "Wow! That's a tiny p-value!"
-    else:
-        fun_message = None
+    fun_message = "You found a rare event!" if p_value <= 0.0001 else None
 
     # TODO 12: Plot histogram of simulated statistics
-    plot3_path = "static/plot3.png"
-    plt.hist(simulated_stats, bins=20, alpha=0.5, label="Simulated Stats")
-    plt.axvline(observed_stat, color="red", label="Observed Stat")
+    plt.hist(simulated_stats, bins=20, color="gray", alpha=0.7, label="Simulated Statistics")
+    plt.axvline(observed_stat, color="red", linestyle="dashed", linewidth=2, label="Observed Statistic")
+    plt.axvline(hypothesized_value, color="blue", linestyle="dashed", linewidth=2, label="Hypothesized Value")
     plt.legend()
+    plot3_path = "static/plot3.png"
     plt.savefig(plot3_path)
     plt.close()
-
-    # Replace with code to generate and save the plot
 
     # Return results to template
     return render_template(
@@ -196,10 +193,10 @@ def hypothesis_test():
         beta0=beta0,
         beta1=beta1,
         S=S,
+        # TODO 13: Uncomment the following lines when implemented
         p_value=p_value,
-        fun_message=fun_message
+        fun_message=fun_message,
     )
-
 
 @app.route("/confidence_interval", methods=["POST"])
 def confidence_interval():
@@ -250,12 +247,22 @@ def confidence_interval():
     # Plot the true parameter value
     plot4_path = "static/plot4.png"
     # Write code here to generate and save the plot
-    plt.plot(estimates, "o", color="gray", alpha=0.5, label="Estimates")
-    plt.hlines([ci_lower, ci_upper], 0, S - 1, color="blue", label="Confidence Interval")
-    plt.axhline(mean_estimate, color="green", label="Mean Estimate")
-    plt.axhline(true_param, color="red", linestyle="--", label="True Parameter")
+    plt.figure(figsize=(6, 4))
+    plt.scatter(estimates, [1]*len(estimates), alpha=0.5, color='gray', 
+               label='Simulated Estimates', s=30)
+    plt.scatter(mean_estimate, 1, color='blue', s=100, zorder=5,
+               label='Mean Estimate')
+    plt.hlines(y=1, xmin=ci_lower, xmax=ci_upper, color='blue', 
+              linewidth=2, label=f'{confidence_level}% Confidence Interval')
+    plt.axvline(true_param, color='green', linestyle='--', linewidth=2, 
+                label='True Slope')
+    plt.title(f'{confidence_level}% Confidence Interval for {parameter.capitalize()} (Mean Estimate)')
+    plt.xlabel(f'{parameter.capitalize()} Estimate')
+    plt.ylim(0.5, 1.5)
+    plt.yticks([])
     plt.legend()
-    plt.savefig(plot4_path)
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.savefig('static/plot4.png', bbox_inches='tight')
     plt.close()
 
     return render_template(
